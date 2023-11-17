@@ -353,16 +353,18 @@ private[pickles] class PickleReader {
         val storedType = readSymType() match
           case storedType: Type => storedType
           case storedType       => throw Scala2PickleFormatException(s"Type expected for $sym but found $storedType")
-        val unwrappedTpe: TypeOrMethodic =
-          if flags.is(Method) then translateTempMethodAndPolyForMethod(storedType)
-          else storedType
-        val paramSymss = paramSymssOf(storedType)
-        if flags.is(Method) && name == nme.Constructor then
-          sym.withDeclaredType(patchConstructorType(sym.owner.asClass, unwrappedTpe))
-          sym.setParamSymss(patchConstructorParamSymss(sym, paramSymss))
-        else
-          sym.withDeclaredType(unwrappedTpe)
-          sym.setParamSymss(paramSymss)
+        sym match
+          case sym: ValueSymbol =>
+            sym.withDeclaredType(storedType)
+          case sym: MethodSymbol =>
+            val unwrappedTpe = translateTempMethodAndPolyForMethod(storedType)
+            val paramSymss = paramSymssOf(storedType)
+            if name == nme.Constructor then
+              sym.withDeclaredType(patchConstructorType(sym.owner.asClass, unwrappedTpe))
+              sym.setParamSymss(patchConstructorParamSymss(sym, paramSymss))
+            else
+              sym.withDeclaredType(unwrappedTpe)
+              sym.setParamSymss(paramSymss)
       case MODULEsym =>
         val sym = ValueSymbol.create(name.toTermName, owner)
         storeResultInEntries(sym)

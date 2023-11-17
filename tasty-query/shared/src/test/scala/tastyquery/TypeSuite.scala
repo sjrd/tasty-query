@@ -3279,16 +3279,16 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
   }
 
   testWithContext("paramSymss-synthetic") {
-    assert(clue(defn.Any_##.paramSymss) == Nil)
+    assert(clue(defn.Any_##.asMethod.paramSymss) == Nil)
 
     locally {
-      val List(Left(List(thatSym))) = defn.Any_==.paramSymss: @unchecked
+      val List(Left(List(thatSym))) = defn.Any_==.asMethod.paramSymss: @unchecked
       assert(clue(thatSym.name) == termName("that"))
       assert(clue(thatSym.declaredType).isRef(defn.AnyClass))
     }
 
     locally {
-      val List(Right(List(aSym))) = defn.Any_asInstanceOf.paramSymss: @unchecked
+      val List(Right(List(aSym))) = defn.Any_asInstanceOf.asMethod.paramSymss: @unchecked
       assert(clue(aSym.name) == typeName("A"))
       assert(clue(aSym.declaredBounds).isNothingAnyBounds)
     }
@@ -3297,7 +3297,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
   testWithContext("paramSymss-scala-3") {
     locally {
       val GenericMethodClass = ctx.findTopLevelClass("simple_trees.GenericMethod")
-      val identity = GenericMethodClass.findNonOverloadedDecl(termName("identity"))
+      val identity = GenericMethodClass.findNonOverloadedDecl(termName("identity")).asMethod
       val List(Right(List(t)), Left(List(x))) = identity.paramSymss: @unchecked
 
       assert(clue(t.name) == typeName("T"))
@@ -3310,7 +3310,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
     locally {
       val GenericMethodWithTypeParamDependenciesClass =
         ctx.findTopLevelClass("simple_trees.GenericMethodWithTypeParamDependencies")
-      val foo = GenericMethodWithTypeParamDependenciesClass.findNonOverloadedDecl(termName("foo"))
+      val foo = GenericMethodWithTypeParamDependenciesClass.findNonOverloadedDecl(termName("foo")).asMethod
       val List(Right(List(a, b, c, d)), Left(Nil)) = foo.paramSymss: @unchecked
 
       assert(clue(a.name) == typeName("A"))
@@ -3324,7 +3324,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
     locally {
       val GenericClassWithTypeParamDependenciesClass =
         ctx.findTopLevelClass("simple_trees.GenericClassWithTypeParamDependencies")
-      val ctor = GenericClassWithTypeParamDependenciesClass.findNonOverloadedDecl(nme.Constructor)
+      val ctor = GenericClassWithTypeParamDependenciesClass.findNonOverloadedDecl(nme.Constructor).asMethod
       val List(Right(List(a, b, c, d)), Left(Nil)) = ctor.paramSymss: @unchecked
 
       assert(clue(a.name) == typeName("A"))
@@ -3337,7 +3337,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
 
     locally {
       val AnnotationsClass = ctx.findTopLevelClass("simple_trees.Annotations")
-      val renamedParam = AnnotationsClass.findNonOverloadedDecl(termName("renamedParam"))
+      val renamedParam = AnnotationsClass.findNonOverloadedDecl(termName("renamedParam")).asMethod
       val List(Left(List(newName))) = renamedParam.paramSymss: @unchecked
 
       assert(clue(newName.name) == termName("newName"))
@@ -3361,7 +3361,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
     val uncheckedVarianceClass = ctx.findTopLevelClass("scala.annotation.unchecked.uncheckedVariance")
 
     locally {
-      val headTailUnapply = CollSeqHeadTailClass.findNonOverloadedDecl(termName("unapply"))
+      val headTailUnapply = CollSeqHeadTailClass.findNonOverloadedDecl(termName("unapply")).asMethod
       val List(Right(List(a, cc, c)), Left(List(t))) = headTailUnapply.paramSymss: @unchecked
 
       assert(clue(a.name) == typeName("A"))
@@ -3385,7 +3385,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
     }
 
     locally {
-      val ctor = ConsClass.findNonOverloadedDecl(nme.Constructor)
+      val ctor = ConsClass.findNonOverloadedDecl(nme.Constructor).asMethod
       val List(Right(List(a)), Left(List(head, next))) = ctor.paramSymss: @unchecked
 
       assert(clue(a.name) == typeName("A"))
@@ -3400,7 +3400,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
     }
 
     locally {
-      val find = ArrayOpsClass.findNonOverloadedDecl(termName("find"))
+      val find = ArrayOpsClass.findNonOverloadedDecl(termName("find")).asMethod
       val List(Left(List(p))) = find.paramSymss: @unchecked
 
       assert(clue(p.name) == termName("p"))
@@ -3435,7 +3435,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
 
     locally {
       // static <T> void fill(List<? super T> list, T obj)
-      val fill = JCollectionsClass.findNonOverloadedDecl(termName("fill"))
+      val fill = JCollectionsClass.findNonOverloadedDecl(termName("fill")).asMethod
       val List(Right(List(t)), Left(List(list, obj))) = fill.paramSymss: @unchecked
 
       assert(clue(t.declaredBounds).isJavaNothingAnyBounds)
@@ -3449,6 +3449,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
         .findAllOverloadedDecls(termName("sort"))
         .find(sym => termParamCount(sym.declaredType) == 1)
         .get
+        .asMethod
       val List(Right(List(t)), Left(List(list))) = sort.paramSymss: @unchecked
 
       assert(
@@ -3466,6 +3467,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
         .findAllOverloadedDecls(nme.Constructor)
         .find(sym => termParamCount(sym.declaredType) == 0)
         .get
+        .asMethod
       val List(Right(List(e)), Left(Nil)) = ctor.paramSymss: @unchecked
 
       assert(clue(e.declaredBounds).isJavaNothingAnyBounds)
@@ -3479,6 +3481,7 @@ class TypeSuite extends UnrestrictedUnpicklingSuite {
           termParamCount(sym.declaredType) == 1 && !firstTermParamType(sym.declaredType).isRef(defn.IntClass)
         )
         .get
+        .asMethod
       val List(Right(List(e)), Left(List(c))) = ctor.paramSymss: @unchecked
 
       assert(clue(e.declaredBounds).isJavaNothingAnyBounds)

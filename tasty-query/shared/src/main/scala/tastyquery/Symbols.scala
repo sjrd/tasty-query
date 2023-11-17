@@ -438,7 +438,6 @@ object Symbols {
 
     // Reference fields (checked in doCheckCompleted)
     private var myDeclaredType: TypeOrMethodic | Null = null
-    private var myParamSymss: List[ParamSymbolsClause] | Null = null
 
     // Cache fields
     private var mySignature: Signature | Null = null
@@ -448,13 +447,6 @@ object Symbols {
     protected override def doCheckCompleted(): Unit =
       super.doCheckCompleted()
       if myDeclaredType == null then failNotCompleted("declaredType was not initialized")
-
-      if flags.is(Method) then
-        if myParamSymss == null then failNotCompleted("paramSymss was not initialized")
-        paramSymss.foreach(_.merge.foreach(_.checkCompleted()))
-      else if myParamSymss == null then myParamSymss = Nil // auto-complete for non-methods
-      else if myParamSymss != Nil then
-        throw IllegalArgumentException(s"illegal non-empty paramSymss $myParamSymss for $this")
     end doCheckCompleted
 
     private[tastyquery] final def withDeclaredType(tpe: TypeOrMethodic): this.type =
@@ -471,53 +463,6 @@ object Symbols {
       val local = myDeclaredType
       if local != null then local
       else throw new IllegalStateException(s"$this was not assigned a declared type")
-
-    private[tastyquery] final def setParamSymss(paramSymss: List[ParamSymbolsClause]): this.type =
-      if myParamSymss != null then throw IllegalStateException(s"reassignment of paramSymss to $this")
-      myParamSymss = paramSymss
-      this
-
-    private[tastyquery] final def autoFillParamSymss(): this.type =
-      setParamSymss(autoComputeParamSymss(declaredType))
-
-    private def autoComputeParamSymss(tpe: TypeOrMethodic): List[ParamSymbolsClause] = tpe match
-      case tpe: MethodType =>
-        /* For term params, we do not instantiate the paramTypes.
-         * We only use autoFillParamSymss for Java definitions, which do not
-         * support term param references at all, and from Definitions, which
-         * does not use that capability in the term param bounds.
-         */
-        val paramSyms = tpe.paramNames.lazyZip(tpe.paramTypes).map { (name, paramType) =>
-          ValueSymbol
-            .createNotDeclaration(name, this)
-            .withFlags(EmptyFlagSet, privateWithin = None)
-            .withDeclaredType(paramType)
-            .setAnnotations(Nil)
-        }
-        Left(paramSyms) :: autoComputeParamSymss(tpe.resultType)
-
-      case tpe: PolyType =>
-        val paramSyms = tpe.paramNames.map { name =>
-          LocalTypeParamSymbol
-            .create(name, this)
-            .withFlags(EmptyFlagSet, privateWithin = None)
-            .setAnnotations(Nil)
-        }
-        val paramSymRefs = paramSyms.map(_.localRef)
-        def subst(t: TypeOrMethodic): t.ThisTypeMappableType =
-          Substituters.substLocalBoundParams(t, tpe, paramSymRefs)
-        for (paramSym, paramTypeBounds) <- paramSyms.lazyZip(tpe.paramTypeBounds) do
-          paramSym.setDeclaredBounds(paramTypeBounds.mapBounds(subst(_)))
-        Right(paramSyms) :: autoComputeParamSymss(subst(tpe.resultType))
-
-      case tpe: Type =>
-        Nil
-    end autoComputeParamSymss
-
-    def paramSymss: List[ParamSymbolsClause] =
-      val local = myParamSymss
-      if local != null then local
-      else throw IllegalStateException(s"$this was not assigned its paramSymss")
 
     /** Is this symbol a module val, i.e., the term of an `object`?
       *
@@ -703,9 +648,63 @@ object Symbols {
   end ValueSymbol
 
   final class MethodSymbol private (name: UnsignedTermName, owner: Symbol) extends TermSymbol(name, owner):
+    // Reference fields (checked in doCheckCompleted)
+    private var myParamSymss: List[ParamSymbolsClause] | Null = null
+
     override protected def doCheckCompleted(): Unit =
       super.doCheckCompleted()
       require(flags.is(Method))
+
+      if myParamSymss == null then failNotCompleted("paramSymss was not initialized")
+      paramSymss.foreach(_.merge.foreach(_.checkCompleted()))
+    end doCheckCompleted
+
+    private[tastyquery] final def setParamSymss(paramSymss: List[ParamSymbolsClause]): this.type =
+      if myParamSymss != null then throw IllegalStateException(s"reassignment of paramSymss to $this")
+      myParamSymss = paramSymss
+      this
+
+    private[tastyquery] final def autoFillParamSymss(): this.type =
+      setParamSymss(autoComputeParamSymss(declaredType))
+
+    private def autoComputeParamSymss(tpe: TypeOrMethodic): List[ParamSymbolsClause] = tpe match
+      case tpe: MethodType =>
+        /* For term params, we do not instantiate the paramTypes.
+         * We only use autoFillParamSymss for Java definitions, which do not
+         * support term param references at all, and from Definitions, which
+         * does not use that capability in the term param bounds.
+         */
+        val paramSyms = tpe.paramNames.lazyZip(tpe.paramTypes).map { (name, paramType) =>
+          ValueSymbol
+            .createNotDeclaration(name, this)
+            .withFlags(EmptyFlagSet, privateWithin = None)
+            .withDeclaredType(paramType)
+            .setAnnotations(Nil)
+        }
+        Left(paramSyms) :: autoComputeParamSymss(tpe.resultType)
+
+      case tpe: PolyType =>
+        val paramSyms = tpe.paramNames.map { name =>
+          LocalTypeParamSymbol
+            .create(name, this)
+            .withFlags(EmptyFlagSet, privateWithin = None)
+            .setAnnotations(Nil)
+        }
+        val paramSymRefs = paramSyms.map(_.localRef)
+        def subst(t: TypeOrMethodic): t.ThisTypeMappableType =
+          Substituters.substLocalBoundParams(t, tpe, paramSymRefs)
+        for (paramSym, paramTypeBounds) <- paramSyms.lazyZip(tpe.paramTypeBounds) do
+          paramSym.setDeclaredBounds(paramTypeBounds.mapBounds(subst(_)))
+        Right(paramSyms) :: autoComputeParamSymss(subst(tpe.resultType))
+
+      case tpe: Type =>
+        Nil
+    end autoComputeParamSymss
+
+    def paramSymss: List[ParamSymbolsClause] =
+      val local = myParamSymss
+      if local != null then local
+      else throw IllegalStateException(s"$this was not assigned its paramSymss")
   end MethodSymbol
 
   private[tastyquery] object MethodSymbol:

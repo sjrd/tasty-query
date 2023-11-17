@@ -229,7 +229,13 @@ private[reader] object ClassfileParser {
       sym.withFlags(flags, privateWithin(javaFlags))
 
       // Auto fill the param symbols from the declared type
-      sym.autoFillParamSymss()
+      sym match
+        case sym: ValueSymbol =>
+          // nothing to do
+          ()
+        case sym: MethodSymbol =>
+          sym.autoFillParamSymss()
+      end match
 
       sym.setAnnotations(Nil) // TODO Read Java annotations on fields and methods
 

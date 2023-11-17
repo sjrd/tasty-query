@@ -740,7 +740,7 @@ private[tasties] class TreeUnpickler private (
   private def doReadValOrDefDef()(using SourceFile): ValOrDefDef = {
     val spn = span
     val start = reader.currentAddr
-    val symbol = caches.getSymbol[TermSymbol](start)
+    val symbol0 = caches.getSymbol[TermSymbol](start)
     val tag = reader.readByte()
     val end = reader.readEnd()
     val name = readUnsignedName()
@@ -751,12 +751,14 @@ private[tasties] class TreeUnpickler private (
       if (reader.currentAddr == end || isModifierTag(reader.nextByte)) None
       else if tag == VALDEF then Some(readTermOrUninitialized())
       else Some(readTerm)
-    readAnnotationsInModifiers(symbol, end)
+    readAnnotationsInModifiers(symbol0, end)
     tag match {
       case VALDEF | PARAM =>
+        val symbol = symbol0.asInstanceOf[ValueSymbol]
         symbol.withDeclaredType(tpt.toType)
         definingTree(symbol, ValDef(name, tpt, rhs, symbol)(spn))
       case DEFDEF =>
+        val symbol = symbol0.asInstanceOf[MethodSymbol]
         val normalizedParams =
           if name == nme.Constructor then normalizeCtorParamClauses(params)
           else params
@@ -835,7 +837,7 @@ private[tasties] class TreeUnpickler private (
       val name = readUnsignedName()
       val typ = readTrueType()
       val body = readPattern
-      val symbol = caches.getSymbol[TermSymbol](start)
+      val symbol = caches.getSymbol[ValueSymbol](start)
       readAnnotationsInModifiers(symbol, end)
       symbol.withDeclaredType(typ)
       definingTree(symbol, Bind(name, body, symbol)(spn))
