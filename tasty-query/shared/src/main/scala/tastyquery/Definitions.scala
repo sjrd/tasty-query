@@ -111,8 +111,8 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
     name: UnsignedTermName,
     tpe: TypeOrMethodic,
     flags: FlagSet = EmptyFlagSet
-  ): TermSymbol =
-    val sym = TermSymbol
+  ): MethodSymbol =
+    val sym = MethodSymbol
       .create(name, owner)
       .withFlags(Method | flags, privateWithin = None)
       .withDeclaredType(tpe)
@@ -214,28 +214,30 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
   private def stringConcatMethodType: MethodType =
     MethodType(List(termName("that")), List(AnyType), StringType)
 
-  val Any_== = createSpecialMethod(AnyClass, nme.m_==, equalityMethodType, Final)
-  val Any_!= = createSpecialMethod(AnyClass, nme.m_!=, equalityMethodType, Final)
-  val Any_## = createSpecialMethod(AnyClass, nme.m_##, IntType, Final)
+  // Explicitly typed as TermSymbol to preserve binary compatibility
 
-  val Any_equals = createSpecialMethod(AnyClass, nme.m_equals, equalityMethodType)
-  val Any_hashCode = createSpecialMethod(AnyClass, nme.m_hashCode, MethodType(Nil, Nil, IntType))
+  val Any_== : TermSymbol = createSpecialMethod(AnyClass, nme.m_==, equalityMethodType, Final)
+  val Any_!= : TermSymbol = createSpecialMethod(AnyClass, nme.m_!=, equalityMethodType, Final)
+  val Any_## : TermSymbol = createSpecialMethod(AnyClass, nme.m_##, IntType, Final)
 
-  val Any_toString = createSpecialMethod(AnyClass, nme.m_toString, MethodType(Nil, Nil, StringType))
+  val Any_equals: TermSymbol = createSpecialMethod(AnyClass, nme.m_equals, equalityMethodType)
+  val Any_hashCode: TermSymbol = createSpecialMethod(AnyClass, nme.m_hashCode, MethodType(Nil, Nil, IntType))
 
-  val Any_isInstanceOf =
+  val Any_toString: TermSymbol = createSpecialMethod(AnyClass, nme.m_toString, MethodType(Nil, Nil, StringType))
+
+  val Any_isInstanceOf: TermSymbol =
     createSpecialMethod(AnyClass, nme.m_isInstanceOf, instanceTestPolyType(_ => BooleanType), Final)
-  val Any_asInstanceOf =
+  val Any_asInstanceOf: TermSymbol =
     createSpecialMethod(AnyClass, nme.m_asInstanceOf, instanceTestPolyType(_.paramRefs.head), Final)
 
-  val Any_typeTest =
+  val Any_typeTest: TermSymbol =
     createSpecialMethod(
       AnyClass,
       termName("$isInstanceOf$"),
       instanceTestPolyType(_ => BooleanType),
       Final | Synthetic | Artifact
     )
-  val Any_typeCast =
+  val Any_typeCast: TermSymbol =
     createSpecialMethod(
       AnyClass,
       termName("$asInstanceOf$"),
@@ -243,7 +245,7 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
       Final | Synthetic | Artifact
     )
 
-  val Any_getClass =
+  val Any_getClass: TermSymbol =
     // def getClass[A >: this.type](): Class[? <: A]
     val tpe = PolyType(List(typeName("A")))(
       pt => List(AbstractTypeBounds(AnyClass.thisType, AnyType)),
@@ -337,7 +339,7 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
     allTypeParams.foreach(_.checkCompleted())
     cls.withTypeParams(allTypeParams)
 
-    val applyMethod = TermSymbol.create(termName("apply"), cls)
+    val applyMethod = MethodSymbol.create(termName("apply"), cls)
     applyMethod.withFlags(Method | Abstract, None)
     applyMethod.withDeclaredType(
       MethodType(List.tabulate(n)(i => termName("x" + i)))(

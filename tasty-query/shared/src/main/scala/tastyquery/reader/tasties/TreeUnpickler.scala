@@ -102,7 +102,9 @@ private[tasties] class TreeUnpickler private (
       case DEFDEF | VALDEF | PARAM =>
         val end = reader.readEnd()
         val name = readUnsignedName()
-        val sym = TermSymbol.create(name, owner)
+        val sym =
+          if tag == DEFDEF then MethodSymbol.create(name, owner)
+          else ValueSymbol.create(name, owner)
         caches.registerSym(start, sym)
         readSymbolModifiers(sym, tag, end)
         reader.until(end)(createSymbols(owner = sym))
@@ -120,7 +122,7 @@ private[tasties] class TreeUnpickler private (
         val name = readUnsignedName()
         val sym =
           if tagFollowShared == TYPEBOUNDS then LocalTypeParamSymbol.create(toTypeName(name), owner)
-          else TermSymbol.create(name, owner)
+          else ValueSymbol.create(name, owner)
         caches.registerSym(start, sym)
         sym.setFlags(Case)
         // bind is never an owner

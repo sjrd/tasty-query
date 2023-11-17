@@ -30,8 +30,10 @@ import tastyquery.reader.Loaders.Loader
   *  |
   *  +- TermOrTypeSymbol                   any term or type symbol, i.e., not a package
   *     |
-  *     +- TermSymbol                      any term definition:
-  *     |                                  `val`, `var`, `def`, term param, term capture, `object` value
+  *     +- TermSymbol                      any definition for a term
+  *     |  +- ValueSymbol                  any value definition:
+  *     |  |                               `val`, `var`, term param, term capture, `object` value
+  *     |  +- MethodSymbol                 definition of a `def`
   *     |
   *     +- TypeSymbol                      any definition for a type
   *        +- ClassSymbol                  definition for a `class`, `trait`, or the module class of an `object`
@@ -53,8 +55,8 @@ import tastyquery.reader.Loaders.Loader
   * - `AbstractType(bounds)`: abstract type member of the form `type T >: bounds.low <: bounds.high`
   * - `OpaqueTypeAlias(bounds, alias)`: opaque type alias of the form `type T >: bounds.low <: bounds.high = alias`
   *
-  * The main property a `TermSymbol` is its `declaredType`, which is a `Type`.
-  * All `TypeSymbolWithBounds` have `bounds` of type `TypeBounds`, which are
+  * The main property of a `TermSymbol` is its `declaredType`, which is a `Type`.
+  * All `TypeSymbolWithBounds` have `declaredBounds` of type `TypeBounds`, which are
   * often used as their primary characteristic. `ClassSymbol`s are entirely
   * defined by themselves.
   *
@@ -429,7 +431,8 @@ object Symbols {
 
   type ParamSymbolsClause = Either[List[TermSymbol], List[LocalTypeParamSymbol]]
 
-  final class TermSymbol private (val name: UnsignedTermName, owner: Symbol) extends TermOrTypeSymbol(owner):
+  sealed abstract class TermSymbol protected (val name: UnsignedTermName, owner: Symbol)
+      extends TermOrTypeSymbol(owner):
     type DefiningTreeType = ValOrDefDef | Bind
     type MatchingSymbolType = TermSymbol
 
@@ -485,7 +488,7 @@ object Symbols {
          * does not use that capability in the term param bounds.
          */
         val paramSyms = tpe.paramNames.lazyZip(tpe.paramTypes).map { (name, paramType) =>
-          TermSymbol
+          ValueSymbol
             .createNotDeclaration(name, this)
             .withFlags(EmptyFlagSet, privateWithin = None)
             .withDeclaredType(paramType)
@@ -524,9 +527,13 @@ object Symbols {
 
     /** Is this symbol a method, i.e., a `def`?
       *
-      * @return true iff `kind == TermSymbolKind.Method`
+      * @return true iff `kind == TermSymbolKind.Method`, also iff `isInstanceOf[MethodSymbol]`
       */
     final def isMethod: Boolean = flags.is(Method)
+
+    final def asMethod: MethodSymbol = this.asInstanceOf[MethodSymbol]
+
+    final def asValue: ValueSymbol = this.asInstanceOf[ValueSymbol]
 
     /** The kind of term definition (`val`, `lazy val`, `var`, `def` or `object`).
       *
@@ -681,13 +688,33 @@ object Symbols {
       flags.is(SignaturePolymorphic)
   end TermSymbol
 
-  private[tastyquery] object TermSymbol:
-    private[tastyquery] def create(name: UnsignedTermName, owner: Symbol): TermSymbol =
-      owner.addDeclIfDeclaringSym(TermSymbol(name, owner))
+  final class ValueSymbol private (name: UnsignedTermName, owner: Symbol) extends TermSymbol(name, owner):
+    override protected def doCheckCompleted(): Unit =
+      super.doCheckCompleted()
+      require(!flags.is(Method))
+  end ValueSymbol
 
-    private[tastyquery] def createNotDeclaration(name: UnsignedTermName, owner: Symbol): TermSymbol =
-      TermSymbol(name, owner)
-  end TermSymbol
+  private[tastyquery] object ValueSymbol:
+    private[tastyquery] def create(name: UnsignedTermName, owner: Symbol): ValueSymbol =
+      owner.addDeclIfDeclaringSym(ValueSymbol(name, owner))
+
+    private[tastyquery] def createNotDeclaration(name: UnsignedTermName, owner: Symbol): ValueSymbol =
+      ValueSymbol(name, owner)
+  end ValueSymbol
+
+  final class MethodSymbol private (name: UnsignedTermName, owner: Symbol) extends TermSymbol(name, owner):
+    override protected def doCheckCompleted(): Unit =
+      super.doCheckCompleted()
+      require(flags.is(Method))
+  end MethodSymbol
+
+  private[tastyquery] object MethodSymbol:
+    private[tastyquery] def create(name: UnsignedTermName, owner: Symbol): MethodSymbol =
+      owner.addDeclIfDeclaringSym(MethodSymbol(name, owner))
+
+    private[tastyquery] def createNotDeclaration(name: UnsignedTermName, owner: Symbol): MethodSymbol =
+      MethodSymbol(name, owner)
+  end MethodSymbol
 
   sealed abstract class TypeSymbol protected (val name: TypeName, owner: Symbol) extends TermOrTypeSymbol(owner):
     type DefiningTreeType <: TypeDef | TypeTreeBind

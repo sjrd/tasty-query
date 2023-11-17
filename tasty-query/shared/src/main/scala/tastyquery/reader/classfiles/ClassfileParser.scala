@@ -170,7 +170,7 @@ private[reader] object ClassfileParser {
       .withGivenSelfType(None)
     allRegisteredSymbols += moduleClass
 
-    val module = TermSymbol
+    val module = ValueSymbol
       .create(name, classOwner)
       .withDeclaredType(moduleClass.localRef)
       .withFlags(clsFlags | Flags.ModuleValCreationFlags, clsPrivateWithin)
@@ -203,7 +203,9 @@ private[reader] object ClassfileParser {
     def createMember(name: SimpleName, isMethod: Boolean, javaFlags: AccessFlags, memberSig: MemberSig): TermSymbol =
       // Select the right owner and create the symbol
       val owner = if javaFlags.isStatic then moduleClass else cls
-      val sym = TermSymbol.create(name, owner)
+      val sym =
+        if isMethod then MethodSymbol.create(name, owner)
+        else ValueSymbol.create(name, owner)
       allRegisteredSymbols += sym
 
       // Parse the signature into a declared type for the symbol

@@ -343,9 +343,12 @@ private[pickles] class PickleReader {
             else false
           case _ => false
         val sym =
+          val nameAsTerm = name.toTermName
           if pickleFlags.isExistential || forceNotDeclaration then
-            TermSymbol.createNotDeclaration(name.toTermName, owner)
-          else TermSymbol.create(name.toTermName, owner)
+            if flags.is(Method) then MethodSymbol.createNotDeclaration(nameAsTerm, owner)
+            else ValueSymbol.createNotDeclaration(nameAsTerm, owner)
+          else if flags.is(Method) then MethodSymbol.create(nameAsTerm, owner)
+          else ValueSymbol.create(nameAsTerm, owner)
         storeResultInEntries(sym) // Store the symbol before reading its type, to avoid cycles
         val storedType = readSymType() match
           case storedType: Type => storedType
@@ -361,7 +364,7 @@ private[pickles] class PickleReader {
           sym.withDeclaredType(unwrappedTpe)
           sym.setParamSymss(paramSymss)
       case MODULEsym =>
-        val sym = TermSymbol.create(name.toTermName, owner)
+        val sym = ValueSymbol.create(name.toTermName, owner)
         storeResultInEntries(sym)
         val ownerPrefix = owner.asInstanceOf[DeclaringSymbol] match
           case owner: PackageSymbol => owner.packageRef

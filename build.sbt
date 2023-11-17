@@ -112,6 +112,9 @@ lazy val tastyQuery =
       mimaBinaryIssueFilters ++= {
         import com.typesafe.tools.mima.core.*
         Seq(
+          // private[tastyquery], not an issue
+          ProblemFilters.exclude[MissingFieldProblem]("tastyquery.Symbols.TermSymbol"),
+          ProblemFilters.exclude[MissingClassProblem]("tastyquery.Symbols$TermSymbol$"),
           // Everything in tastyquery.reader is private[tastyquery] at most
           ProblemFilters.exclude[Problem]("tastyquery.reader.*"),
         )
@@ -119,9 +122,14 @@ lazy val tastyQuery =
 
       tastyMiMaPreviousArtifacts := mimaPreviousArtifacts.value,
       tastyMiMaConfig ~= { prev =>
+        import tastymima.intf._
         prev
           .withMoreArtifactPrivatePackages(java.util.Arrays.asList(
             "tastyquery",
+          ))
+          .withMoreProblemFilters(java.util.Arrays.asList(
+            // TermSymbol was concrete but is now abstract; OK because the (only) constructor was private
+            ProblemMatcher.make(ProblemKind.AbstractClass, "tastyquery.Symbols.TermSymbol"),
           ))
       },
     )
