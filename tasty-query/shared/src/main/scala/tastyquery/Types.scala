@@ -1742,7 +1742,7 @@ object Types {
       *   - replace @repeated annotations on Seq or Array types by RepeatedType's
       *   - add @inlineParam to inline parameters
       */
-    private[tastyquery] def fromSymbols(params: List[TermSymbol], resultType: TypeOrMethodic): MethodType = {
+    private[tastyquery] def fromSymbols(params: List[ValueSymbol], resultType: TypeOrMethodic): MethodType = {
       def annotatedToRepeated(tpe: Type): Type = tpe match
         case tpe: AnnotatedType =>
           tpe.annotation.syntacticExtractInternalRepeatedAnnot match
@@ -1763,8 +1763,8 @@ object Types {
       //   AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       // def translateErased(tp: Type): Type =
       //   AnnotatedType(tp, Annotation(defn.ErasedParamAnnot))
-      def paramInfo(param: TermSymbol): Type = {
-        var paramType = annotatedToRepeated(param.declaredType.requireType)
+      def paramInfo(param: ValueSymbol): Type = {
+        var paramType = annotatedToRepeated(param.declaredType)
         // if (param.is(Inline)) paramType = translateInline(paramType)
         // if (param.is(Erased)) paramType = translateErased(paramType)
         paramType

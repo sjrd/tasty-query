@@ -216,7 +216,7 @@ object Trees {
       def rec(paramLists: List[ParamsClause]): TypeOrMethodic =
         paramLists match
           case Left(params) :: rest =>
-            val paramSymbols = params.map(_.symbol)
+            val paramSymbols = params.map(_.symbol.asValue)
             MethodType.fromSymbols(paramSymbols, rec(rest))
           case Right(tparams) :: rest =>
             PolyType.fromParams(tparams, rec(rest))

@@ -429,40 +429,19 @@ object Symbols {
     end matchingSymbol
   end TermOrTypeSymbol
 
-  type ParamSymbolsClause = Either[List[TermSymbol], List[LocalTypeParamSymbol]]
+  type ParamSymbolsClause = Either[List[ValueSymbol], List[LocalTypeParamSymbol]]
 
   sealed abstract class TermSymbol protected (val name: UnsignedTermName, owner: Symbol)
       extends TermOrTypeSymbol(owner):
     type DefiningTreeType = ValOrDefDef | Bind
     type MatchingSymbolType = TermSymbol
 
-    // Reference fields (checked in doCheckCompleted)
-    private var myDeclaredType: TypeOrMethodic | Null = null
-
     // Cache fields
     private var mySignature: Signature | Null = null
     private var myTargetName: UnsignedTermName | Null = null
     private var mySignedName: TermName | Null = null
 
-    protected override def doCheckCompleted(): Unit =
-      super.doCheckCompleted()
-      if myDeclaredType == null then failNotCompleted("declaredType was not initialized")
-    end doCheckCompleted
-
-    private[tastyquery] final def withDeclaredType(tpe: TypeOrMethodic): this.type =
-      if myDeclaredType != null then throw new IllegalStateException(s"reassignment of declared type to $this")
-      myDeclaredType = tpe
-      this
-
-    /** You should not need this; it is a hack for patching Scala 2 constructors in `PickleReader`. */
-    private[tastyquery] final def overwriteDeclaredType(tpe: TypeOrMethodic): this.type =
-      myDeclaredType = tpe
-      this
-
-    def declaredType: TypeOrMethodic =
-      val local = myDeclaredType
-      if local != null then local
-      else throw new IllegalStateException(s"$this was not assigned a declared type")
+    def declaredType: TypeOrMethodic
 
     /** Is this symbol a module val, i.e., the term of an `object`?
       *
@@ -539,7 +518,7 @@ object Symbols {
       * - for `object val C` => `object class C[$]`
       */
     final def moduleClass(using Context): Option[ClassSymbol] =
-      if isModuleVal then declaredType.requireType.classSymbol
+      if isModuleVal then asValue.declaredType.classSymbol
       else None
 
     override final def localRef: TermRef =
@@ -549,8 +528,7 @@ object Symbols {
       require(isStatic, s"Cannot construct a staticRef for non-static symbol $this")
       TermRef(owner.staticOwnerPrefix, this)
 
-    final def typeAsSeenFrom(prefix: Prefix)(using Context): TypeOrMethodic =
-      declaredType.asSeenFrom(prefix, owner)
+    def typeAsSeenFrom(prefix: Prefix)(using Context): TypeOrMethodic
 
     private def isConstructor: Boolean =
       owner.isClass && isMethod && name == nme.Constructor
@@ -634,9 +612,32 @@ object Symbols {
   end TermSymbol
 
   final class ValueSymbol private (name: UnsignedTermName, owner: Symbol) extends TermSymbol(name, owner):
+    // Reference fields (checked in doCheckCompleted)
+    private var myDeclaredType: Type | Null = null
+
     override protected def doCheckCompleted(): Unit =
       super.doCheckCompleted()
       require(!flags.is(Method))
+      if myDeclaredType == null then failNotCompleted("declaredType was not initialized")
+    end doCheckCompleted
+
+    private[tastyquery] final def setDeclaredType(tpe: Type): this.type =
+      if myDeclaredType != null then throw new IllegalStateException(s"reassignment of declared type to $this")
+      myDeclaredType = tpe
+      this
+
+    /** You should not need this; it is a hack for patching Scala 2 constructors in `PickleReader`. */
+    private[tastyquery] final def overwriteDeclaredType(tpe: Type): this.type =
+      myDeclaredType = tpe
+      this
+
+    final def declaredType: Type =
+      val local = myDeclaredType
+      if local != null then local
+      else throw new IllegalStateException(s"$this was not assigned a declared type")
+
+    final def typeAsSeenFrom(prefix: Prefix)(using Context): Type =
+      declaredType.asSeenFrom(prefix, owner)
   end ValueSymbol
 
   private[tastyquery] object ValueSymbol:
@@ -649,15 +650,30 @@ object Symbols {
 
   final class MethodSymbol private (name: UnsignedTermName, owner: Symbol) extends TermSymbol(name, owner):
     // Reference fields (checked in doCheckCompleted)
+    private var myDeclaredType: TypeOrMethodic | Null = null
     private var myParamSymss: List[ParamSymbolsClause] | Null = null
 
     override protected def doCheckCompleted(): Unit =
       super.doCheckCompleted()
       require(flags.is(Method))
+      if myDeclaredType == null then failNotCompleted("declaredType was not initialized")
 
       if myParamSymss == null then failNotCompleted("paramSymss was not initialized")
       paramSymss.foreach(_.merge.foreach(_.checkCompleted()))
     end doCheckCompleted
+
+    private[tastyquery] final def setDeclaredType(tpe: TypeOrMethodic): this.type =
+      if myDeclaredType != null then throw new IllegalStateException(s"reassignment of declared type to $this")
+      myDeclaredType = tpe
+      this
+
+    final def declaredType: TypeOrMethodic =
+      val local = myDeclaredType
+      if local != null then local
+      else throw new IllegalStateException(s"$this was not assigned a declared type")
+
+    final def typeAsSeenFrom(prefix: Prefix)(using Context): TypeOrMethodic =
+      declaredType.asSeenFrom(prefix, owner)
 
     private[tastyquery] final def setParamSymss(paramSymss: List[ParamSymbolsClause]): this.type =
       if myParamSymss != null then throw IllegalStateException(s"reassignment of paramSymss to $this")
@@ -678,7 +694,7 @@ object Symbols {
           ValueSymbol
             .createNotDeclaration(name, this)
             .withFlags(EmptyFlagSet, privateWithin = None)
-            .withDeclaredType(paramType)
+            .setDeclaredType(paramType)
             .setAnnotations(Nil)
         }
         Left(paramSyms) :: autoComputeParamSymss(tpe.resultType)

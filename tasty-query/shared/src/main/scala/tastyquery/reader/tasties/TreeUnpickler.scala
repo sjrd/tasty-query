@@ -754,22 +754,22 @@ private[tasties] class TreeUnpickler private (
     readAnnotationsInModifiers(symbol0, end)
     tag match {
       case VALDEF | PARAM =>
-        val symbol = symbol0.asInstanceOf[ValueSymbol]
-        symbol.withDeclaredType(tpt.toType)
+        val symbol = symbol0.asValue
+        symbol.setDeclaredType(tpt.toType)
         definingTree(symbol, ValDef(name, tpt, rhs, symbol)(spn))
       case DEFDEF =>
-        val symbol = symbol0.asInstanceOf[MethodSymbol]
+        val symbol = symbol0.asMethod
         val normalizedParams =
           if name == nme.Constructor then normalizeCtorParamClauses(params)
           else params
-        symbol.withDeclaredType(ParamsClause.makeDefDefType(normalizedParams, tpt))
+        symbol.setDeclaredType(ParamsClause.makeDefDefType(normalizedParams, tpt))
         symbol.setParamSymss(normalizedParams.map(paramsClauseToParamSymbolsClause(_)))
         definingTree(symbol, DefDef(name, normalizedParams, tpt, rhs, symbol)(spn))
     }
   }
 
   private def paramsClauseToParamSymbolsClause(clause: ParamsClause): ParamSymbolsClause = clause match
-    case Left(termParams)  => Left(termParams.map(_.symbol))
+    case Left(termParams)  => Left(termParams.map(_.symbol.asValue))
     case Right(typeParams) => Right(typeParams.map(_.symbol.asInstanceOf[LocalTypeParamSymbol]))
 
   /** Normalizes the param clauses of a constructor definition.
@@ -839,7 +839,7 @@ private[tasties] class TreeUnpickler private (
       val body = readPattern
       val symbol = caches.getSymbol[ValueSymbol](start)
       readAnnotationsInModifiers(symbol, end)
-      symbol.withDeclaredType(typ)
+      symbol.setDeclaredType(typ)
       definingTree(symbol, Bind(name, body, symbol)(spn))
     case ALTERNATIVE =>
       val spn = span

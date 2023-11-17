@@ -38,8 +38,46 @@ private[classfiles] object JavaSignatures:
       superRef :: interfaces.map(classRef).toList
   end parseSupers
 
+  def parseFieldSignature(member: ValueSymbol, signature: String, allRegisteredSymbols: Growable[TermOrTypeSymbol])(
+    using ReaderContext,
+    InnerClasses,
+    Resolver
+  ): Type =
+    parseSignature(member, isMethod = false, signature, allRegisteredSymbols) match
+      case tpe: Type =>
+        tpe
+      case tpe: MethodicType =>
+        throw AssertionError(s"parsed a MethodicType for a field: ${tpe.showBasic}, from sig: $signature")
+  end parseFieldSignature
+
+  def parseMethodSignature(member: MethodSymbol, signature: String, allRegisteredSymbols: Growable[TermOrTypeSymbol])(
+    using ReaderContext,
+    InnerClasses,
+    Resolver
+  ): MethodicType =
+    parseSignature(member, isMethod = true, signature, allRegisteredSymbols) match
+      case tpe: MethodicType =>
+        tpe
+      case tpe: Type =>
+        throw AssertionError(s"parsed a Type for a method: ${tpe.showBasic}, from sig: $signature")
+  end parseMethodSignature
+
+  def parseClassSignature(member: ClassSymbol, signature: String, allRegisteredSymbols: Growable[TermOrTypeSymbol])(
+    using ReaderContext,
+    InnerClasses,
+    Resolver
+  ): List[Type] =
+    parseSignature(member, isMethod = false, signature, allRegisteredSymbols) match
+      case tpe: AndType =>
+        tpe.parts
+      case tpe: Type =>
+        tpe :: Nil
+      case tpe: MethodicType =>
+        throw AssertionError(s"parsed a MethodicType for a class: ${tpe.showBasic}, from sig: $signature")
+  end parseClassSignature
+
   @throws[ClassfileFormatException]
-  def parseSignature(
+  private def parseSignature(
     member: TermOrTypeSymbol,
     isMethod: Boolean,
     signature: String,

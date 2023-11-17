@@ -355,15 +355,15 @@ private[pickles] class PickleReader {
           case storedType       => throw Scala2PickleFormatException(s"Type expected for $sym but found $storedType")
         sym match
           case sym: ValueSymbol =>
-            sym.withDeclaredType(storedType)
+            sym.setDeclaredType(storedType)
           case sym: MethodSymbol =>
             val unwrappedTpe = translateTempMethodAndPolyForMethod(storedType)
             val paramSymss = paramSymssOf(storedType)
             if name == nme.Constructor then
-              sym.withDeclaredType(patchConstructorType(sym.owner.asClass, unwrappedTpe))
+              sym.setDeclaredType(patchConstructorType(sym.owner.asClass, unwrappedTpe))
               sym.setParamSymss(patchConstructorParamSymss(sym, paramSymss))
             else
-              sym.withDeclaredType(unwrappedTpe)
+              sym.setDeclaredType(unwrappedTpe)
               sym.setParamSymss(paramSymss)
       case MODULEsym =>
         val sym = ValueSymbol.create(name.toTermName, owner)
@@ -371,7 +371,7 @@ private[pickles] class PickleReader {
         val ownerPrefix = owner.asInstanceOf[DeclaringSymbol] match
           case owner: PackageSymbol => owner.packageRef
           case owner: ClassSymbol   => owner.thisType
-        sym.withDeclaredType(TypeRef(ownerPrefix, sym.name.asSimpleName.withObjectSuffix.toTypeName))
+        sym.setDeclaredType(TypeRef(ownerPrefix, sym.name.asSimpleName.withObjectSuffix.toTypeName))
         sym
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
@@ -726,7 +726,7 @@ private[pickles] class PickleReader {
         TempClassInfoType(pkl.until(end, () => readTrueTypeRef()))
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeOrMethodicRef()
-        val params = pkl.until(end, () => readLocalSymbolRef().asTerm)
+        val params = pkl.until(end, () => readLocalSymbolRef().asTerm.asValue)
         TempMethodType(params, restpe)
       case POLYtpe =>
         // create PolyType
@@ -1262,7 +1262,7 @@ private[reader] object PickleReader {
 
   private final class UnsupportedTreeInAnnotationException(message: String) extends Exception(message)
 
-  private[tastyquery] case class TempMethodType(paramSyms: List[TermSymbol], resType: TypeMappable)
+  private[tastyquery] case class TempMethodType(paramSyms: List[ValueSymbol], resType: TypeMappable)
       extends CustomTransientGroundType
 
   private[tastyquery] case class TempPolyType(paramSyms: List[TypeParamSymbol], resType: TypeMappable)

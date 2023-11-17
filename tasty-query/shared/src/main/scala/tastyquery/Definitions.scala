@@ -115,7 +115,7 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
     val sym = MethodSymbol
       .create(name, owner)
       .withFlags(Method | flags, privateWithin = None)
-      .withDeclaredType(tpe)
+      .setDeclaredType(tpe)
       .setAnnotations(Nil)
       .autoFillParamSymss()
     sym.checkCompleted()
@@ -341,7 +341,7 @@ final class Definitions private[tastyquery] (ctx: Context, rootPackage: PackageS
 
     val applyMethod = MethodSymbol.create(termName("apply"), cls)
     applyMethod.withFlags(Method | Abstract, None)
-    applyMethod.withDeclaredType(
+    applyMethod.setDeclaredType(
       MethodType(List.tabulate(n)(i => termName("x" + i)))(
         mt => inputTypeParams.map(_.localRef),
         mt => resultTypeParam.localRef

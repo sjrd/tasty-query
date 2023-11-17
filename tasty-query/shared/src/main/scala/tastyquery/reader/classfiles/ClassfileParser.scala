@@ -172,7 +172,7 @@ private[reader] object ClassfileParser {
 
     val module = ValueSymbol
       .create(name, classOwner)
-      .withDeclaredType(moduleClass.localRef)
+      .setDeclaredType(moduleClass.localRef)
       .withFlags(clsFlags | Flags.ModuleValCreationFlags, clsPrivateWithin)
       .setAnnotations(Nil)
     allRegisteredSymbols += module
@@ -209,21 +209,24 @@ private[reader] object ClassfileParser {
       allRegisteredSymbols += sym
 
       // Parse the signature into a declared type for the symbol
-      val declaredType =
-        val parsedType = JavaSignatures.parseSignature(sym, isMethod, memberSig, allRegisteredSymbols)
-        val adaptedType =
-          if isMethod && sym.name == nme.Constructor then cls.makePolyConstructorType(parsedType)
-          else if isMethod && javaFlags.isVarargsIfMethod then patchForVarargs(sym, parsedType)
-          else parsedType
-        adaptedType
-      end declaredType
-      sym.withDeclaredType(declaredType)
+      sym match
+        case sym: ValueSymbol =>
+          val declaredType = JavaSignatures.parseFieldSignature(sym, memberSig, allRegisteredSymbols)
+          sym.setDeclaredType(declaredType)
+        case sym: MethodSymbol =>
+          val parsedType = JavaSignatures.parseMethodSignature(sym, memberSig, allRegisteredSymbols)
+          val adaptedType =
+            if sym.name == nme.Constructor then cls.makePolyConstructorType(parsedType)
+            else if javaFlags.isVarargsIfMethod then patchForVarargs(sym, parsedType)
+            else parsedType
+          sym.setDeclaredType(adaptedType)
+      end match
 
       // Compute the flags for the symbol
       val flags =
         var flags1 = javaFlags.toFlags | JavaDefined
         if isMethod then flags1 |= Method
-        if isSignaturePolymorphic(isMethod, javaFlags, declaredType) then flags1 |= SignaturePolymorphic
+        if isSignaturePolymorphic(isMethod, javaFlags, sym.declaredType) then flags1 |= SignaturePolymorphic
         flags1
       end flags
       sym.withFlags(flags, privateWithin(javaFlags))
@@ -262,9 +265,7 @@ private[reader] object ClassfileParser {
       val parents = attributes.get(attr.Signature) match
         case Some(stream) =>
           val sig = stream.use(ClassfileReader.readSignature)
-          JavaSignatures.parseSignature(cls, isMethod = false, sig, allRegisteredSymbols).requireType match
-            case mix: AndType => mix.parts
-            case sup          => sup :: Nil
+          JavaSignatures.parseClassSignature(cls, sig, allRegisteredSymbols)
         case None =>
           structure.supers.use {
             val superClass = ClassfileReader.readSuperClass().map(binaryName)
