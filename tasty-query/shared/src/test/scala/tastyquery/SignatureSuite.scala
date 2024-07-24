@@ -408,7 +408,8 @@ class SignatureSuite extends UnrestrictedUnpicklingSuite:
     val MatchType = ctx.findTopLevelClass("simple_trees.MatchType")
 
     val unboundUnreducibleSig = MatchType.findNonOverloadedDecl(termName("unboundUnreducibleSig"))
-    assertSigned(unboundUnreducibleSig, "(1,java.lang.Object):java.lang.Object")
+    // Was "(1,java.lang.Object):java.lang.Object" < 3.4.2
+    assertSigned(unboundUnreducibleSig, "(1,java.lang.Object):java.lang.String")
 
     val unboundReducibleSig = MatchType.findNonOverloadedDecl(termName("unboundReducibleSig"))
     assertSigned(unboundReducibleSig, "(1,scala.Int):java.lang.String")
@@ -421,7 +422,8 @@ class SignatureSuite extends UnrestrictedUnpicklingSuite:
 
     // this one is suspicious, but it is what dotc does (I expected `Object` instead of `Object[]`)
     val arrayOfUnboundUnreducibleSig = MatchType.findNonOverloadedDecl(termName("arrayOfUnboundUnreducibleSig"))
-    assertSigned(arrayOfUnboundUnreducibleSig, "(1,java.lang.Object):java.lang.Object[]")
+    // Was "(1,java.lang.Object):java.lang.Object[]" < 3.4.2
+    assertSigned(arrayOfUnboundUnreducibleSig, "(1,java.lang.Object):java.lang.String[]")
 
     val arrayOfUnboundReducibleSig = MatchType.findNonOverloadedDecl(termName("arrayOfUnboundReducibleSig"))
     assertSigned(arrayOfUnboundReducibleSig, "(1,scala.Int):java.lang.String[]")

@@ -1904,8 +1904,8 @@ class ReadTreeSuite extends RestrictedUnpicklingSuite {
               List(TypeParam(SimpleTypeName("X"), NothingAnyTypeBoundsTree(), _)),
               TypeAliasDefinitionTree(
                 MatchTypeTree(
-                  // No bound on the match result
-                  TypeWrapper(TypeRefInternal(ScalaPackageRef(), tpnme.Any)),
+                  // No bound on the match result -- inferred to be String since 3.4.2
+                  TypeWrapper(TypeRefInternal(_, tpnme.String)),
                   TypeIdent(SimpleTypeName("X")),
                   List(TypeCaseDef(TypeIdent(SimpleTypeName("Int")), TypeIdent(SimpleTypeName("String"))))
                 )
@@ -1946,8 +1946,8 @@ class ReadTreeSuite extends RestrictedUnpicklingSuite {
               List(TypeParam(SimpleTypeName("X"), NothingAnyTypeBoundsTree(), _)),
               TypeAliasDefinitionTree(
                 MatchTypeTree(
-                  // No bound on the match result
-                  TypeWrapper(TypeRefInternal(ScalaPackageRef(), tpnme.Any)),
+                  // No bound on the match result -- inferred since 3.4.2
+                  TypeWrapper(_),
                   TypeIdent(SimpleTypeName("X")),
                   List(TypeCaseDef(TypeIdent(tpnme.Wildcard), TypeIdent(SimpleTypeName("Int"))))
                 )
@@ -1965,8 +1965,8 @@ class ReadTreeSuite extends RestrictedUnpicklingSuite {
               List(TypeParam(SimpleTypeName("X"), NothingAnyTypeBoundsTree(), _)),
               TypeAliasDefinitionTree(
                 MatchTypeTree(
-                  // No bound on the match result
-                  TypeWrapper(TypeRefInternal(ScalaPackageRef(), tpnme.Any)),
+                  // No bound on the match result -- inferred since 3.4.2
+                  TypeWrapper(_),
                   TypeIdent(SimpleTypeName("X")),
                   List(
                     TypeCaseDef(
@@ -1995,7 +1995,8 @@ class ReadTreeSuite extends RestrictedUnpicklingSuite {
                 Select(rhs, SignedName(SimpleName("$asInstanceOf$"), _, _)),
                 TypeWrapper(
                   ty.MatchType(
-                    TypeRefInternal(ScalaPackageRef(), SimpleTypeName("Any")),
+                    // No bound on the match result -- inferred since 3.4.2
+                    _,
                     TypeRefInternal(_, xRef),
                     List(
                       ty.MatchTypeCase(
@@ -2026,7 +2027,8 @@ class ReadTreeSuite extends RestrictedUnpicklingSuite {
                 Select(rhs, SignedName(SimpleName("$asInstanceOf$"), _, _)),
                 TypeWrapper(
                   ty.MatchType(
-                    TypeRefInternal(ScalaPackageRef(), SimpleTypeName("Any")),
+                    // No bound on the match result -- inferred since 3.4.2
+                    _,
                     TypeRefInternal(_, xRef),
                     List(
                       ty.MatchTypeCase(

@@ -211,7 +211,11 @@ class PrintersTest extends UnrestrictedUnpicklingSuite:
     )
 
     val MatchTypeClass = ctx.findTopLevelClass("simple_trees.MatchType")
-    testShowBasicMember(MatchTypeClass, typeName("MT"), "type MT[X] = X match { case Int => String }")
+    testShowBasicMember(
+      MatchTypeClass,
+      typeName("MT"),
+      "type MT[X] <: scala.Predef.String = X match { case Int => String }"
+    )
     testShowBasicMember(
       MatchTypeClass,
       typeName("MTWithBound"),
@@ -220,9 +224,14 @@ class PrintersTest extends UnrestrictedUnpicklingSuite:
     testShowBasicMember(
       MatchTypeClass,
       typeName("MTWithWildcard"),
-      "type MTWithWildcard[X] = X match { case _ => Int }"
+      "type MTWithWildcard[X] <: scala.Int = X match { case _ => Int }"
     )
-    testShowBasicMember(MatchTypeClass, typeName("MTWithBind"), "type MTWithBind[X] = X match { case List[t] => t }")
+    // The `<: t` is completely wrong. See https://github.com/scala/scala3/issues/21256
+    testShowBasicMember(
+      MatchTypeClass,
+      typeName("MTWithBind"),
+      "type MTWithBind[X] <: t = X match { case List[t] => t }"
+    )
   }
 
   testWithContext("multiline tree printers") {
@@ -286,7 +295,7 @@ class PrintersTest extends UnrestrictedUnpicklingSuite:
     testShowMultilineMember(
       MatchTypeClass,
       typeName("MT"),
-      """type MT[X] = X match {
+      """type MT[X] <: scala.Predef.String = X match {
         |  case Int => String
         |}""".stripMargin
     )
@@ -300,14 +309,15 @@ class PrintersTest extends UnrestrictedUnpicklingSuite:
     testShowMultilineMember(
       MatchTypeClass,
       typeName("MTWithWildcard"),
-      """type MTWithWildcard[X] = X match {
+      """type MTWithWildcard[X] <: scala.Int = X match {
         |  case _ => Int
         |}""".stripMargin
     )
+    // The `<: t` is completely wrong. See https://github.com/scala/scala3/issues/21256
     testShowMultilineMember(
       MatchTypeClass,
       typeName("MTWithBind"),
-      """type MTWithBind[X] = X match {
+      """type MTWithBind[X] <: t = X match {
         |  case List[t] => t
         |}""".stripMargin
     )
